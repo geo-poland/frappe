@@ -34,7 +34,7 @@ def get_context(context):
 
 	return {
 		"body": get_html(doc, print_format = frappe.form_dict.format,
-			meta=meta, trigger_print = frappe.form_dict.trigger_print),
+			meta=meta, trigger_print = frappe.form_dict.trigger_print, no_letterhead=frappe.form_dict.no_letterhead),
 		"css": get_print_style(frappe.form_dict.style),
 		"comment": frappe.session.user,
 		"title": doc.get(meta.title_field) if meta.title_field else doc.name
@@ -142,7 +142,7 @@ def make_layout(doc, meta):
 		if df.fieldtype=="HTML" and df.options:
 			doc.set(df.fieldname, True) # show this field
 
-		if is_visible(df) and doc.get(df.fieldname) is not None:
+		if is_visible(df) and doc.get(df.fieldname) not in (None, ""):
 			page[-1][-1].append(df)
 
 			# if table, add the row info in the field
@@ -190,7 +190,7 @@ def get_print_style(style=None):
 			# prepend css with at_import
 			css = at_import + css
 
-		css += additional_css
+		css += "\n" + additional_css
 	except TemplateNotFound:
 		pass
 

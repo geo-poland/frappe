@@ -15,7 +15,7 @@ class MaxFileSizeReachedError(frappe.ValidationError): pass
 
 def get_file_url(file_data_name):
 	data = frappe.db.get_value("File Data", file_data_name, ["file_name", "file_url"], as_dict=True)
-	return data.file_name or data.file_url
+	return data.file_url or data.file_name
 
 def upload():
 	# get record details
@@ -224,7 +224,7 @@ def get_content_hash(content):
 
 def get_file_name(fname, optional_suffix):
 	n_records = frappe.db.sql("select name from `tabFile Data` where file_name='{}'".format(fname))
-	if len(n_records) > 0:
+	if len(n_records) > 0 or os.path.exists(get_files_path(fname)):
 		partial, extn = fname.rsplit('.', 1)
 		return '{partial}{suffix}.{extn}'.format(partial=partial, extn=extn, suffix=optional_suffix)
 	return fname
