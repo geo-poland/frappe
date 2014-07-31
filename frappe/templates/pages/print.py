@@ -42,10 +42,12 @@ def get_context(context):
 
 @frappe.whitelist()
 def get_html(doc, name=None, print_format=None, meta=None,
-	no_letterhead=False, trigger_print=False):
+	no_letterhead=None, trigger_print=False):
 
 	if isinstance(no_letterhead, basestring):
 		no_letterhead = cint(no_letterhead)
+	elif no_letterhead is None:
+		no_letterhead = not cint(frappe.db.get_single_value("Print Settings", "with_letterhead"))
 
 	if isinstance(doc, basestring) and isinstance(name, basestring):
 		doc = frappe.get_doc(doc, name)
@@ -175,13 +177,17 @@ def is_visible(df):
 	return (df.fieldtype not in no_display) and not df.get("__print_hide") and not df.print_hide
 
 def get_print_style(style=None):
-	if not style:
-		style = frappe.db.get_single_value("Print Settings", "print_style") or "Standard"
+	print_settings = frappe.get_doc("Print Settings")
 
-	css = frappe.get_template("templates/styles/standard.css").render()
+	if not style:
+		style = print_settings.print_style or "Standard"
+
+	context = {"print_settings": print_settings}
+
+	css = frappe.get_template("templates/styles/standard.css").render(context)
 
 	try:
-		additional_css = frappe.get_template("templates/styles/" + style.lower() + ".css").render()
+		additional_css = frappe.get_template("templates/styles/" + style.lower() + ".css").render(context)
 
 		# move @import to top
 		for at_import in list(set(re.findall("(@import url\([^\)]+\)[;]?)", additional_css))):
