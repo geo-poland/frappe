@@ -50,7 +50,10 @@ class DatabaseQuery(object):
 		args = self.prepare_args()
 		args.limit = self.add_limit()
 
-		query = """select %(fields)s from %(tables)s where %(conditions)s
+		if args.conditions:
+			args.conditions = "where " + args.conditions
+
+		query = """select %(fields)s from %(tables)s %(conditions)s
 			%(group_by)s %(order_by)s %(limit)s""" % args
 
 		return frappe.db.sql(query, as_dict=not self.as_list, debug=self.debug)
@@ -141,7 +144,6 @@ class DatabaseQuery(object):
 	def build_conditions(self):
 		self.conditions = []
 		self.or_conditions = []
-		self.add_docstatus_conditions()
 		self.build_filter_conditions(self.filters, self.conditions)
 		self.build_filter_conditions(self.or_filters, self.or_conditions)
 
@@ -154,12 +156,6 @@ class DatabaseQuery(object):
 			match_conditions = self.build_match_conditions()
 			if match_conditions:
 				self.conditions.append("(" + match_conditions + ")")
-
-	def add_docstatus_conditions(self):
-		if self.docstatus:
-			self.conditions.append(self.tables[0] + '.docstatus in (' + ','.join(self.docstatus) + ')')
-		else:
-			self.conditions.append(self.tables[0] + '.docstatus < 2')
 
 	def build_filter_conditions(self, filters, conditions):
 		"""build conditions from user filters"""
@@ -180,15 +176,20 @@ class DatabaseQuery(object):
 					opts = f[3]
 					if not isinstance(opts, (list, tuple)):
 						opts = f[3].split(",")
-					opts = ["'" + t.strip().replace("'", "\\'") + "'" for t in opts]
-					f[3] = "(" + ', '.join(opts) + ")"
-					conditions.append('ifnull(' + tname + '.' + f[1] + ", '') " + f[2] + " " + f[3])
+					opts = [frappe.db.escape(t.strip()) for t in opts]
+					f[3] = '("{0}")'.format('", "'.join(opts))
+					conditions.append('ifnull({tname}.{fname}, "") {operator} {value}'.format(
+						tname=tname, fname=f[1], operator=f[2], value=f[3]))
 				else:
 					df = frappe.get_meta(f[0]).get("fields", {"fieldname": f[1]})
 
 					if f[2] == "like" or (isinstance(f[3], basestring) and
 						(not df or df[0].fieldtype not in ["Float", "Int", "Currency", "Percent"])):
-							value, default_val = ("'" + f[3].replace("'", "\\'") + "'"), '""'
+							if f[2] == "like":
+								# because "like" uses backslash (\) for escaping
+								f[3] = f[3].replace("\\", "\\\\")
+
+							value, default_val = '"{0}"'.format(frappe.db.escape(f[3])), '""'
 					else:
 						value, default_val = flt(f[3]), 0
 
@@ -276,6 +277,7 @@ class DatabaseQuery(object):
 		return frappe.db.sql(query, as_dict = (not self.as_list))
 
 	def set_order_by(self, args):
+		meta = frappe.get_meta(self.doctype)
 		if self.order_by:
 			args.order_by = self.order_by
 		else:
@@ -289,9 +291,13 @@ class DatabaseQuery(object):
 				) and not self.group_by)
 
 			if not group_function_without_group_by:
-				meta = frappe.get_meta(self.doctype)
+
 				args.order_by = "`tab{0}`.`{1}` {2}".format(self.doctype,
 					meta.sort_field or "modified", meta.sort_order or "desc")
+
+				# draft docs always on top
+				if meta.is_submittable:
+					args.order_by = "`tab{0}`.docstatus asc, ".format(self.doctype) + args.order_by
 
 	def check_sort_by_table(self, order_by):
 		if "." in order_by:

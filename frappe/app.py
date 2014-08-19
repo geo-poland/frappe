@@ -20,15 +20,13 @@ import frappe.utils.response
 import frappe.website.render
 from frappe.utils import get_site_name
 from frappe.middlewares import StaticDataMiddleware
-from frappe.setup_logging import setup_logging
 
 local_manager = LocalManager([frappe.local])
 
 _site = None
 _sites_path = os.environ.get("SITES_PATH", ".")
 
-setup_logging()
-logger = logging.getLogger(__name__)
+logger = frappe.get_logger()
 
 @Request.application
 def application(request):
@@ -41,7 +39,7 @@ def application(request):
 
 		init_site(request)
 
-		if frappe.local.conf.get('maintainance_mode'):
+		if frappe.local.conf.get('maintenance_mode'):
 			raise frappe.SessionStopped
 
 		make_form_dict(request)

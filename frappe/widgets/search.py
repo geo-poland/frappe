@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import frappe
 import frappe.widgets.reportview
-from frappe.utils import cstr
+from frappe.utils import cstr, unique
 
 # this is called by the Link Field
 @frappe.whitelist()
@@ -62,10 +62,10 @@ def search_widget(doctype, txt, query=None, searchfield=None, start=0,
 			if txt:
 				if meta.search_fields:
 					for f in meta.get_search_fields():
-						or_filters.append([doctype, f.strip(), "like", "%" + txt + "%"])
+						or_filters.append([doctype, f.strip(), "like", "%{0}%".format(txt)])
 				else:
-					filters.append([doctype, searchfield or "name", "like",
-						"%" + txt + "%"])
+					filters.append([doctype, searchfield or "name", "like", "%{0}%".format(txt)])
+
 			if meta.get("fields", {"fieldname":"enabled", "fieldtype":"Check"}):
 				filters.append([doctype, "enabled", "=", 1])
 			if meta.get("fields", {"fieldname":"disabled", "fieldtype":"Check"}):
@@ -75,7 +75,7 @@ def search_widget(doctype, txt, query=None, searchfield=None, start=0,
 
 			# find relevance as location of search term from the beginning of string `name`. used for sorting results.
 			fields.append("""locate("{_txt}", name) as `_relevance`""".format(
-				_txt=(txt or "").replace("%", "").replace('"', '\\"'), doctype=doctype))
+				_txt=frappe.db.escape((txt or "").replace("%", "")), doctype=doctype))
 
 			values = frappe.widgets.reportview.execute(doctype,
 				filters=filters, fields=fields,
@@ -99,7 +99,7 @@ def get_std_fields_list(meta, key):
 def build_for_autosuggest(res):
 	results = []
 	for r in res:
-		out = {"value": r[0], "description": ", ".join(list(set(cstr(d) for d in r[1:])))}
+		out = {"value": r[0], "description": ", ".join(unique(cstr(d) for d in r)[1:])}
 		results.append(out)
 	return results
 

@@ -4,6 +4,8 @@
 frappe.provide("frappe.ui.form");
 
 frappe.ui.form.save = function(frm, action, callback, btn) {
+	$(btn).prop("disabled", true);
+
 	var save = function() {
 		check_name();
 		if(check_mandatory()) {
@@ -16,6 +18,8 @@ frappe.ui.form.save = function(frm, action, callback, btn) {
 				},
 				btn: btn
 			});
+		} else {
+			$(btn).prop("disabled", false);
 		}
 	};
 
@@ -41,6 +45,7 @@ frappe.ui.form.save = function(frm, action, callback, btn) {
 				doc.__newname = strip(newname);
 			} else {
 				msgprint(__("Name is required"));
+				$(btn).prop("disabled", false);
 				throw "name required";
 			}
 		}
@@ -56,19 +61,30 @@ frappe.ui.form.save = function(frm, action, callback, btn) {
 		$.each(frappe.model.get_all_docs(frm.doc), function(i, doc) {
 
 			var error_fields = [];
+			var folded = false;
 
 			$.each(frappe.meta.docfield_list[doc.doctype] || [], function(i, docfield) {
 				if(docfield.fieldname) {
 					var df = frappe.meta.get_docfield(doc.doctype,
 						docfield.fieldname, frm.doc.name);
 
+					if(df.fieldtype==="Fold") {
+						folded = frm.layout.folded;
+					}
+
 					if(df.reqd && !frappe.model.has_value(doc.doctype, doc.name, df.fieldname)) {
 						has_errors = true;
 						error_fields[error_fields.length] = df.label;
 
 						// scroll to field
-						if(!me.scroll_set)
+						if(!me.scroll_set) {
 							scroll_to(doc.parentfield || df.fieldname);
+						}
+
+						if(folded) {
+							frm.layout.unfold();
+							folded = false;
+						}
 					}
 
 				}
@@ -85,7 +101,7 @@ frappe.ui.form.save = function(frm, action, callback, btn) {
 	var scroll_to = function(fieldname) {
 		var f = cur_frm.fields_dict[fieldname];
 		if(f) {
-			$(document).scrollTop($(f.wrapper).offset().top - 100);
+			$(document).scrollTop($(f.wrapper).offset().top - 80);
 		}
 		frm.scroll_set = true;
 	};

@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 
 import frappe
 from frappe import _
-import os
 
 from frappe.utils import now, cint
 from frappe.model import no_value_fields
@@ -13,6 +12,7 @@ from frappe.model.document import Document
 from frappe.model.db_schema import type_map
 from frappe.core.doctype.property_setter.property_setter import make_property_setter
 from frappe.core.doctype.notification_count.notification_count import delete_notification_count_for
+from frappe.modules import make_boilerplate
 
 form_grid_templates = {
 	"fields": "templates/form_grid/fields.html"
@@ -146,31 +146,11 @@ class DocType(Document):
 		import_from_files(record_list=[[self.module, 'doctype', self.name]])
 
 	def make_controller_template(self):
-		from frappe.modules import get_doc_path, get_module_path, scrub
-
-		target_path = get_doc_path(self.module, self.doctype, self.name)
-
-		app = frappe.local.module_app[scrub(self.module)]
-		if not app:
-			frappe.throw(_("App not found"))
-		app_publisher = frappe.get_hooks(hook="app_publisher", app_name=app)[0]
-
-		def _make_boilerplate(template):
-			template_name = template.replace("controller", scrub(self.name))
-			target_file_path = os.path.join(target_path, template_name)
-			if not os.path.exists(target_file_path):
-
-				with open(target_file_path, 'w') as target:
-					with open(os.path.join(get_module_path("core"), "doctype", "doctype",
-						"boilerplate", template), 'r') as source:
-						target.write(source.read().format(app_publisher=app_publisher,
-							classname=self.name.replace(" ", ""), doctype=self.name))
-
-		_make_boilerplate("controller.py")
+		make_boilerplate("controller.py", self)
 
 		if not (self.istable or self.issingle):
-			_make_boilerplate("test_controller.py")
-			_make_boilerplate("test_records.json")
+			make_boilerplate("test_controller.py", self)
+			make_boilerplate("test_records.json", self)
 
 	def make_amendable(self):
 		"""
@@ -211,7 +191,7 @@ def validate_fields(fields):
 			frappe.throw(_("Fieldname {0} appears multiple times in rows {1}").format(fieldname, ", ".join(duplicates)))
 
 	def check_illegal_mandatory(d):
-		if d.fieldtype in ('HTML', 'Button', 'Section Break', 'Column Break') and d.reqd:
+		if (d.fieldtype in no_value_fields) and d.fieldtype!="Table" and d.reqd:
 			frappe.throw(_("Field {0} of type {1} cannot be mandatory").format(d.label, d.fieldtype))
 
 	def check_link_table_options(d):
@@ -248,6 +228,21 @@ def validate_fields(fields):
 				or (doctype_pointer[0].options!="DocType"):
 				frappe.throw(_("Options 'Dynamic Link' type of field must point to another Link Field with options as 'DocType'"))
 
+	def check_fold(fields):
+		fold_exists = False
+		for i, f in enumerate(fields):
+			if f.fieldtype=="Fold":
+				if fold_exists:
+					frappe.throw(_("There can be only one Fold in a form"))
+				fold_exists = True
+				if i < len(fields)-1:
+					nxt = fields[i+1]
+					if nxt.fieldtype != "Section Break" \
+						or (nxt.fieldtype=="Section Break" and not nxt.label):
+						frappe.throw(_("Fold must come before a labelled Section Break"))
+				else:
+					frappe.throw(_("Fold can not be at the end of the form"))
+
 	for d in fields:
 		if not d.permlevel: d.permlevel = 0
 		if not d.fieldname:
@@ -261,6 +256,7 @@ def validate_fields(fields):
 		check_in_list_view(d)
 
 	check_min_items_in_list(fields)
+	check_fold(fields)
 
 def validate_permissions_for_doctype(doctype, for_remove=False):
 	doctype = frappe.get_doc("DocType", doctype)
@@ -392,3 +388,9 @@ def make_module_and_roles(doc, perm_fieldname="permissions"):
 			pass
 		else:
 			raise
+
+def init_list(doctype):
+	doc = frappe.get_meta(doctype)
+	make_boilerplate("controller_list.js", doc)
+	make_boilerplate("controller_list.html", doc)
+

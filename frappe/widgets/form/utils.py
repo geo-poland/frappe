@@ -13,7 +13,7 @@ def remove_attach():
 	"""remove attachment"""
 	import frappe.utils.file_manager
 	fid = frappe.form_dict.get('fid')
-	frappe.utils.file_manager.remove_file(fid)
+	return frappe.utils.file_manager.remove_file(fid)
 
 @frappe.whitelist()
 def get_fields():
@@ -48,6 +48,9 @@ def validate_link():
 
 		# get fetch values
 		if fetch:
+			# escape with "`"
+			fetch = ", ".join(("`{0}`".format(f.strip()) for f in fetch.split(",")))
+
 			frappe.response['fetch_values'] = [frappe.utils.parse_val(c) \
 				for c in frappe.db.sql("select %s from `tab%s` where name=%s" \
 					% (fetch, options, '%s'), (value,))[0]]

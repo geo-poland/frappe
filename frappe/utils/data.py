@@ -294,10 +294,9 @@ def fmt_money(amount, precision=None, currency=None):
 	amount = comma_str.join(parts) + ((precision and decimal_str) and (decimal_str + decimals) or "")
 	amount = minus + amount
 
-	if currency:
-		symbol = frappe.db.get_value("Currency", currency, "symbol")
-		if symbol:
-			amount = symbol + " " + amount
+	if currency and frappe.defaults.get_global_default("hide_currency_symbol") != "Yes":
+		symbol = frappe.db.get_value("Currency", currency, "symbol") or currency
+		amount = symbol + " " + amount
 
 	return amount
 
@@ -417,11 +416,12 @@ def is_html(text):
 			break
 	return out
 
+
+# from Jinja2 code
+_striptags_re = re.compile(r'(<!--.*?-->|<[^>]*>)')
 def strip_html(text):
-	"""
-		removes anything enclosed in and including <>
-	"""
-	return re.compile(r'<.*?>').sub('', text)
+	"""removes anything enclosed in and including <>"""
+	return _striptags_re.sub("", text)
 
 def escape_html(text):
 	html_escape_table = {
@@ -585,3 +585,10 @@ def quote_urls(html):
 	return re.sub('(href|src){1}([\s]*=[\s]*[\'"]?)((?:http)[^\'">]+)([\'"]?)',
 		_quote_url, html)
 
+def unique(seq):
+	"""use this instead of list(set()) to preserve order of the original list.
+	Thanks to Stackoverflow: http://stackoverflow.com/questions/480214/how-do-you-remove-duplicates-from-a-list-in-python-whilst-preserving-order"""
+
+	seen = set()
+	seen_add = seen.add
+	return [ x for x in seq if not (x in seen or seen_add(x)) ]

@@ -4,7 +4,7 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _, msgprint
-from frappe.utils import flt, cint, cstr, now, get_url_to_form
+from frappe.utils import flt, cint, cstr, now
 from frappe.modules import load_doctype_module
 from frappe.model.base_document import BaseDocument
 from frappe.model.naming import set_new_name
@@ -59,7 +59,7 @@ class Document(BaseDocument):
 					# filter
 					self.name = frappe.db.get_value(arg1, arg2, "name")
 					if self.name is None:
-						raise frappe.DoesNotExistError, (arg1, arg2)
+						frappe.throw(_("{0} {1} not found").format(_(arg1), arg2), frappe.DoesNotExistError)
 				else:
 					self.name = arg2
 
@@ -105,6 +105,10 @@ class Document(BaseDocument):
 			else:
 				self.set(df.fieldname, [])
 
+	def check_permission(self, permtype, permlabel=None):
+		if not self.has_permission(permtype):
+			self.raise_no_permission_to(permlabel or permtype)
+
 	def has_permission(self, permtype):
 		if getattr(self, "ignore_permissions", False):
 			return True
@@ -114,13 +118,15 @@ class Document(BaseDocument):
 		raise frappe.PermissionError("No permission to {} {} {}".format(perm_type, self.doctype, self.name or ""))
 
 	def insert(self, ignore_permissions=None):
+		if getattr(self, "in_print", False):
+			return
+
 		if ignore_permissions!=None:
 			self.ignore_permissions = ignore_permissions
 
 		self.set("__islocal", True)
 
-		if not self.has_permission("create"):
-			self.raise_no_permission_to("create")
+		self.check_permission("create")
 		self._set_defaults()
 		self._set_docstatus_user_and_timestamp()
 		self.check_if_latest()
@@ -153,6 +159,9 @@ class Document(BaseDocument):
 		return self
 
 	def save(self, ignore_permissions=None):
+		if getattr(self, "in_print", False):
+			return
+
 		if ignore_permissions!=None:
 			self.ignore_permissions = ignore_permissions
 
@@ -160,8 +169,7 @@ class Document(BaseDocument):
 			self.insert()
 			return
 
-		if not self.has_permission("write"):
-			self.raise_no_permission_to("save")
+		self.check_permission("write", "save")
 
 		self._set_docstatus_user_and_timestamp()
 		self.check_if_latest()
@@ -300,20 +308,17 @@ class Document(BaseDocument):
 				self._action = "save"
 			elif self.docstatus==1:
 				self._action = "submit"
-				if not self.has_permission("submit"):
-					self.raise_no_permission_to("submit")
+				self.check_permission("submit")
 			else:
 				raise frappe.DocstatusTransitionError("Cannot change docstatus from 0 to 2")
 
 		elif docstatus==1:
 			if self.docstatus==1:
 				self._action = "update_after_submit"
-				if not self.has_permission("submit"):
-					self.raise_no_permission_to("submit")
+				self.check_permission("submit")
 			elif self.docstatus==2:
 				self._action = "cancel"
-				if not self.has_permission("cancel"):
-					self.raise_no_permission_to("cancel")
+				self.check_permission("cancel")
 			else:
 				raise frappe.DocstatusTransitionError("Cannot change docstatus from 1 to 0")
 
@@ -355,16 +360,22 @@ class Document(BaseDocument):
 		if self.get("ignore_links"):
 			return
 
-		invalid_links = self.get_invalid_links()
+		invalid_links, cancelled_links = self.get_invalid_links()
+
 		for d in self.get_all_children():
-			invalid_links.extend(d.get_invalid_links())
+			result = d.get_invalid_links(is_submittable=self.meta.is_submittable)
+			invalid_links.extend(result[0])
+			cancelled_links.extend(result[1])
 
-		if not invalid_links:
-			return
+		if invalid_links:
+			msg = ", ".join((each[2] for each in invalid_links))
+			frappe.throw(_("Could not find {0}").format(msg),
+				frappe.LinkValidationError)
 
-		msg = ", ".join((each[2] for each in invalid_links))
-		frappe.throw(_("Could not find {0}").format(msg),
-			frappe.LinkValidationError)
+		if cancelled_links:
+			msg = ", ".join((each[2] for each in cancelled_links))
+			frappe.throw(_("Cannot link cancelled document: {0}").format(msg),
+				frappe.CancelledLinkError)
 
 	def get_all_children(self, parenttype=None):
 		ret = []
@@ -423,9 +434,11 @@ class Document(BaseDocument):
 		elif self._action=="submit":
 			self.run_method("on_update")
 			self.run_method("on_submit")
+			self.add_comment("Submitted")
 		elif self._action=="cancel":
 			self.run_method("on_cancel")
 			self.check_no_back_links_exist()
+			self.add_comment("Cancelled")
 		elif self._action=="update_after_submit":
 			self.run_method("on_update_after_submit")
 
@@ -559,3 +572,14 @@ class Document(BaseDocument):
 
 	def get_url(self):
 		return "/desk#Form/{doctype}/{name}".format(doctype=self.doctype, name=self.name)
+
+	def add_comment(self, comment_type, text=None):
+		comment = frappe.get_doc({
+			"doctype":"Comment",
+			"comment_by": frappe.session.user,
+			"comment_type": comment_type,
+			"comment_doctype": self.doctype,
+			"comment_docname": self.name,
+			"comment": text or comment_type
+		}).insert(ignore_permissions=True)
+		return comment

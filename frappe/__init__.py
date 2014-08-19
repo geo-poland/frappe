@@ -7,8 +7,7 @@ globals attached to frappe module
 from __future__ import unicode_literals
 
 from werkzeug.local import Local, release_local
-import os, importlib, inspect
-import json
+import os, importlib, inspect, logging, json
 
 # public
 from frappe.__version__ import __version__
@@ -485,10 +484,13 @@ def setup_module_map():
 			_cache.set_value("app_modules", local.app_modules)
 			_cache.set_value("module_app", local.module_app)
 
-def get_file_items(path, raise_not_found=False):
+def get_file_items(path, raise_not_found=False, ignore_empty_lines=True):
 	content = read_file(path, raise_not_found=raise_not_found)
 	if content:
-		return [p.strip() for p in content.splitlines() if p.strip() and not p.startswith("#")]
+		# \ufeff is no-width-break, \u200b is no-width-space
+		content = content.replace("\ufeff", "").replace("\u200b", "").strip()
+
+		return [p.strip() for p in content.splitlines() if (not ignore_empty_lines) or (p.strip() and not p.startswith("#"))]
 	else:
 		return []
 
@@ -614,9 +616,9 @@ def get_test_records(doctype):
 	else:
 		return []
 
-def format_value(value, df, doc=None):
+def format_value(value, df, doc=None, currency=None):
 	import frappe.utils.formatters
-	return frappe.utils.formatters.format_value(value, df, doc)
+	return frappe.utils.formatters.format_value(value, df, doc, currency=currency)
 
 def get_print_format(doctype, name, print_format=None, style=None, as_pdf=False):
 	from frappe.website.render import build_page
@@ -636,3 +638,14 @@ def get_print_format(doctype, name, print_format=None, style=None, as_pdf=False)
 			return html
 	else:
 		return html
+
+logging_setup_complete = False
+def get_logger(module=None):
+	from frappe.setup_logging import setup_logging
+	global logging_setup_complete
+
+	if not logging_setup_complete:
+		setup_logging()
+		logging_setup_complete = True
+
+	return logging.getLogger(module or "frappe")

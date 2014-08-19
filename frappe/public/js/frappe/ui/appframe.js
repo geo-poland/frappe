@@ -87,42 +87,22 @@ frappe.ui.AppFrame = Class.extend({
 	},
 
 	clear_primary_action: function() {
-		if(this.primary_dropdown) {
-			this.primary_dropdown.remove();
-			this.primary_action.remove();
-			this.primary_dropdown = this.primary_action = null;
-		}
+		this.parent.find(".appframe-primary-actions").addClass("hide");
+		this.parent.find(".appframe-primary-actions .container").empty();
 	},
 
-	add_primary_action: function(label, click, icon) {
-		if(!this.primary_dropdown) {
-			if(!this.primary_action) {
-				var $right = this.parent.find(".titlebar-item.text-right");
-				this.btn_group = $('<div class="btn-group"></div>').prependTo($right);
-				this.primary_action = $("<a class='btn btn-default'>")
-					.html(__("Actions") + " <i class='icon-caret-down'></i>")
-					.css({"margin-right":"15px", "display":"inline-block"})
-					.prependTo(this.btn_group);
-			}
-
-			var id = "dropdown-" + frappe.dom.set_unique_id();
-			this.primary_action
-				.attr("id", id)
-				.attr("data-toggle", "dropdown")
-				.addClass("dropdown-toggle")
-				.parent()
-					.addClass("dropdown");
-			this.primary_dropdown = $('<ul class="dropdown-menu pull-right" role="menu" \
-				aria-labelledby="'+ id +'"></ul>')
-				.insertAfter(this.primary_action).dropdown();
+	add_primary_action: function(label, click, icon, toolbar_or_class) {
+		if(toolbar_or_class===true) {
+			this.add_icon_btn("4", icon, label, click);
+			return;
 		}
-
-		var $li = $('<li role="presentation"><a role="menuitem" class="text-left">'
-			+ (icon ? '<i class="'+icon+' icon-fixed-width"></i> ' : "") + label+'</a></li>')
-			.appendTo(this.primary_dropdown)
-			.on("click", function() { click && click.apply(this); });
-
-		return $li;
+		var wrapper = this.parent.find(".appframe-primary-actions .container");
+		this.parent.find(".appframe-primary-actions").removeClass("hide");
+		return $(repl('<button class="btn %(klass)s btn-sm">\
+			<i class="%(icon)s"></i> %(label)s</button>', {label:label, icon:icon,
+				klass: toolbar_or_class || "btn-primary"}))
+			.on("click", click)
+			.appendTo(wrapper);
 	},
 
 	set_views_for: function(doctype, active_view) {
@@ -217,7 +197,10 @@ frappe.ui.AppFrame = Class.extend({
 		this.get_main_icon(icon)
 			.attr("doctype-name", doctype);
 
-		this.set_title_left(function() { frappe.set_route(module_info.link); });
+		this.set_title_left(function() {
+			var route = frappe.get_route()[0]==module_info.link ? "" : module_info.link;
+			frappe.set_route(route);
+		});
 	},
 
 	get_main_icon: function(icon) {
@@ -284,8 +267,7 @@ frappe.ui.AppFrame = Class.extend({
 			.addClass('col-md-2')
 			.css({
 				"padding-left": "0px",
-				"padding-right": "0px",
-				"margin-right": "5px",
+				"padding-right": "7px",
 			})
 			.attr("title", __(df.label)).tooltip();
 		f.$input.attr("placeholder", __(df.label));
@@ -296,6 +278,11 @@ frappe.ui.AppFrame = Class.extend({
 		} else {
 			$(f.wrapper)
 				.prepend('<label class="appframe-control-label">' + __(df.label) + '</label>');
+		}
+
+		if(df.fieldtype=="Button") {
+			$(f.wrapper).find(".appframe-control-label").html("&nbsp;")
+			f.$input.addClass("btn-sm").css({"width": "100%", "margin-top": "-1px"});
 		}
 
 		if(df["default"])
@@ -320,7 +307,7 @@ frappe.ui.make_app_page = function(opts) {
 		]
 	*/
 	$wrapper = $(opts.parent)
-	$('<div class="appframe-titlebar">\
+	$('<div class="app-page container"><div class="appframe-titlebar">\
 			<div class="container">\
 				<div class="row">\
 					<div class="titlebar-item col-sm-8">\
@@ -339,26 +326,33 @@ frappe.ui.make_app_page = function(opts) {
 			<div class="container">\
 			</div>\
 		</div>\
+		<div class="appframe-primary-actions hide">\
+			<div class="container">\
+			</div>\
+		</div>\
 		<div class="appframe-wrapper">\
 			<div class="appframe container">\
 				<div class="appframe-timestamp hide"></div>\
 				<div class="workflow-button-area btn-group pull-right hide"></div>\
 				<div class="clearfix"></div>\
 			</div>\
-		</div>\
+		</div></div>\
 		<div class="appframe-footer hide"></div>').appendTo($wrapper);
 
 	if(opts.single_column) {
-		$('<div class="layout-main"></div>').appendTo($wrapper.find(".appframe"));
+		opts.parent.body = $('<div class="layout-main"></div>').appendTo($wrapper.find(".appframe"));
 	} else {
-		$('<div class="row">\
+		opts.parent.layout = $('<div class="row">\
 			<div class="layout-main-section col-sm-9"></div>\
 			<div class="layout-side-section col-sm-3"></div>\
 			</div>').appendTo($wrapper.find(".appframe"));
+
+		opts.parent.body = opts.parent.layout.find(".layout-main-section");
 	}
 	opts.parent.appframe = new frappe.ui.AppFrame($wrapper);
 	if(opts.set_document_title!==undefined)
 		opts.parent.appframe.set_document_title = opts.set_document_title;
 	if(opts.title) opts.parent.appframe.set_title(opts.title);
 	if(opts.icon) opts.parent.appframe.get_main_icon(opts.icon);
+
 }

@@ -45,7 +45,7 @@ frappe.ui.toolbar.Toolbar = Class.extend({
 							placeholder="' + __("Search or type a command") + '" \
 							style="padding: 2px 6px; height: 24px; margin-top: 5px; \
 								margin-left: 10px; background-color: #ddd; \
-								min-width: 230px; font-size: 85%;\
+								min-width: 220px; font-size: 85%;\
 								border-radius: 10px;">\
 			          </div>\
 			        </form>\
@@ -166,7 +166,7 @@ $.extend(frappe.ui.toolbar, {
 			.insertBefore(menu.find(".divider"))
 			.find("a")
 			.click(function() {
-				click();
+				click.apply(this);
 			});
 	},
 	get_menu: function(label) {

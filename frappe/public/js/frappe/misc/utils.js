@@ -153,10 +153,12 @@ frappe.utils = {
 		return '' !== val ? regExp.test( val ) : false;
 	},
 	guess_style: function(text, default_style) {
-		var style = default_style;
+		var style = default_style || "default";
 		if(!text)
 			return style;
-		if(has_words(["Open", "Pending"], text)) {
+		if(has_words(["Pending", "Review", "Medium"], text)) {
+			style = "warning";
+		} else if(has_words(["Open", "Rejected", "Urgent", "High"], text)) {
 			style = "danger";
 		} else if(has_words(["Closed", "Finished", "Converted", "Completed", "Confirmed",
 			"Approved", "Yes", "Active"], text)) {
@@ -168,8 +170,8 @@ frappe.utils = {
 	},
 
 	sort: function(list, key, compare_type, reverse) {
-		if(list.length < 2)
-			return list;
+		if(!list || list.length < 2)
+			return list || [];
 
 		var sort_fn = {
 			"string": function(a, b) {

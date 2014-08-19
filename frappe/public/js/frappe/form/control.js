@@ -16,7 +16,7 @@ function make_field(docfield, doctype, parent, frm, in_grid, hide_label) { // Fa
 		df: docfield,
 		doctype: doctype,
 		parent: parent,
-		hide_label: hide_label,
+		only_input: hide_label,
 		frm: frm
 	});
 }
@@ -39,7 +39,7 @@ frappe.ui.form.Control = Class.extend({
 	},
 
 	make_wrapper: function() {
-		this.$wrapper = $("<div>").appendTo(this.parent);
+		this.$wrapper = $("<div class='frappe-control'></div>").appendTo(this.parent);
 	},
 
 	// returns "Read", "Write" or "None"
@@ -139,9 +139,9 @@ frappe.ui.form.ControlInput = frappe.ui.form.Control.extend({
 	},
 	make_wrapper: function() {
 		if(this.only_input) {
-			this.$wrapper = $('<div class="form-group">').appendTo(this.parent);
+			this.$wrapper = $('<div class="form-group frappe-control">').appendTo(this.parent);
 		} else {
-			this.$wrapper = $('<div class="form-horizontal">\
+			this.$wrapper = $('<div class="form-horizontal frappe-control">\
 				<div class="form-group row" style="margin: 0px">\
 					<label class="control-label small col-xs-'+(this.horizontal?"4":"12")
 						+'" style="padding-right: 0px;"></label>\
@@ -229,9 +229,14 @@ frappe.ui.form.ControlInput = frappe.ui.form.Control.extend({
 				}
 				if(me.validate) {
 					me.validate(value, function(value1) {
-						if(value !== value1)
+						if(value !== value1) {
 							me.set_input(value1)
+						} else {
+							me.set_mandatory && me.set_mandatory(value);
+						}
 					});
+				} else {
+					me.set_mandatory && me.set_mandatory(value);
 				}
 			}
 		});
@@ -472,7 +477,7 @@ frappe.ui.form.ControlSmallText = frappe.ui.form.ControlText;
 frappe.ui.form.ControlCheck = frappe.ui.form.ControlData.extend({
 	input_type: "checkbox",
 	make_wrapper: function() {
-		this.$wrapper = $('<div class="form-group row" style="margin: 0px;">\
+		this.$wrapper = $('<div class="form-group row frappe-control" style="margin: 0px;">\
 		<div class="col-md-offset-4 col-md-8">\
 			<div class="checkbox" style="margin: 5px 0px">\
 				<label>\
@@ -519,8 +524,8 @@ frappe.ui.form.ControlButton = frappe.ui.form.ControlData.extend({
 		this.has_input = true;
 	},
 	onclick: function() {
-		if(this.frm && this.frm.doc && this.frm.cscript) {
-			if(this.frm.cscript[this.df.fieldname]) {
+		if(this.frm && this.frm.doc) {
+			if(this.frm.script_manager.get_handlers(this.df.fieldname, this.doctype, this.docname).length) {
 				this.frm.script_manager.trigger(this.df.fieldname, this.doctype, this.docname);
 			} else {
 				this.frm.runscript(this.df.options, this);
@@ -783,7 +788,7 @@ frappe.ui.form.ControlLink = frappe.ui.form.ControlData.extend({
 				<a class="btn-search" title="Search Link">\
 					<i class="icon-search"></i>\
 				</a><a class="btn-open" title="Open Link">\
-					<i class="icon-play"></i>\
+					<i class="icon-arrow-right"></i>\
 				</a><a class="btn-new" title="Make New">\
 					<i class="icon-plus"></i>\
 				</a>\
@@ -1040,7 +1045,7 @@ frappe.ui.form.ControlTable = frappe.ui.form.Control.extend({
 			var prev_fieldtype = cur_frm.meta.fields[this.df.idx - 2].fieldtype;
 		}
 
-		if(["Column Break", "Section Break", "HTML"].indexOf(prev_fieldtype)===-1) {
+		if(frappe.model.layout_fields.indexOf(prev_fieldtype)===-1) {
 			$("<label>" + this.df.label + "<label>").appendTo(this.wrapper);
 		}
 

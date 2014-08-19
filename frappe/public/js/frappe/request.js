@@ -33,7 +33,8 @@ frappe.call = function(opts) {
 		freeze: opts.freeze,
 		show_spinner: !opts.no_spinner,
 		progress_bar: opts.progress_bar,
-		async: opts.async
+		async: opts.async,
+		url: opts.url || frappe.request.url,
 	});
 }
 
@@ -160,7 +161,7 @@ frappe.request.prepare = function(opts) {
 	}
 
 	// no cmd?
-	if(!opts.args.cmd) {
+	if(!opts.args.cmd && !opts.url) {
 		console.log(opts)
 		throw "Incomplete Request";
 	}
@@ -260,6 +261,8 @@ frappe.request.report_error = function(xhr, request_opts) {
 			+ __("Report this issue") + '</a></p>'
 			+'</div>';
 
+		request_opts = frappe.request.cleanup_request_opts(request_opts);
+
 		var msg_dialog = msgprint(error_message);
 
 		msg_dialog.msg_area.find(".report-btn")
@@ -295,4 +298,19 @@ frappe.request.report_error = function(xhr, request_opts) {
 				communication_composer.dialog.$wrapper.css("z-index", cint(msg_dialog.$wrapper.css("z-index")) + 1);
 			});
 	}
+};
+
+frappe.request.cleanup_request_opts = function(request_opts) {
+	var doc = (request_opts.args || {}).doc;
+	if (doc) {
+		doc = JSON.parse(doc);
+		$.each(Object.keys(doc), function(i, key) {
+			if (key.indexOf("password")!==-1 && doc[key]) {
+				// mask the password
+				doc[key] = "*****";
+			}
+		});
+		request_opts.args.doc = JSON.stringify(doc);
+	}
+	return request_opts;
 };

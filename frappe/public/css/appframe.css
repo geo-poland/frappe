@@ -8,26 +8,29 @@
 .appframe-wrapper {
 	background-color: #fff;
 	min-height: 400px;
-	box-shadow: 1px 0px 1px rgba(0,0,0,0.4);
+	/*box-shadow: 1px 0px 1px rgba(0,0,0,0.4);*/
 }
 
 .appframe-titlebar {
-	border-bottom: 1px solid #ddd;
+	border-bottom: 1px solid #c7c7c7;
 }
 
-.appframe-footer {
-	border-top: 1px solid #ddd;
-	/*background-color: rgba(255, 255, 255, 0.9);*/
-	background-color: #f9f9f9;
-}
-
-.appframe-titlebar, .appframe-iconbar, .appframe-form {
+.appframe-titlebar, .appframe-iconbar, .appframe-form, .appframe-primary-actions {
 	/*background-color: rgba(255, 255, 255, 0.7);*/
 	background-color: #f9f9f9;
 }
 
+.appframe-primary-actions {
+	border-bottom: 1px solid #c7c7c7;
+}
+
+.appframe-primary-actions .btn {
+	margin: 10px;
+	margin-left: 0px;
+}
+
 .appframe-iconbar {
-	border-bottom: 1px solid #ddd;
+	border-bottom: 1px solid #c7c7c7;
 }
 
 .titlebar-item {
@@ -142,6 +145,11 @@ h2.titlebar-left-item {
 	padding: 9px 0px;
 }
 
+.iconbar-4 {
+	border-left: 1px solid #c7c7c7;
+	padding-left: 4px;
+}
+
 .iconbar ul {
 	list-style: none;
 	margin: 0 0 0 0;
@@ -173,11 +181,6 @@ h2.titlebar-left-item {
 .iconbar .appframe-iconbar-active i {
 	font-weight: bold;
 	color: orange;
-}
-
-
-.appframe-footer {
-	padding-top: 15px;
 }
 
 .workflow-button-area {
