@@ -7,6 +7,19 @@ import frappe
 no_sitemap = 1
 base_template_path = "templates/pages/style_settings.css"
 
+default_properties = {
+	"background_color": "FFFFFF",
+	"top_bar_background": "FFFFFF",
+	"top_bar_foreground": "000000",
+	"page_text": "000000",
+	"page_header_background": "263248",
+	"page_header_text": "ffffff",
+	"font_size": "14px",
+	"google_web_font_for_heading": "Noto Sans",
+	"google_web_font_for_text": "Noto Sans"
+}
+
+
 def get_context(context):
 	"""returns web style"""
 	doc = frappe.get_doc("Style Settings", "Style Settings")
@@ -17,19 +30,9 @@ def get_context(context):
 def prepare(doc):
 	from frappe.utils import cint, cstr
 
-	# set default colours
-	default_colours = {
-		"background_color": "FFFFFF",
-		"top_bar_background": "FFFFFF",
-		"top_bar_foreground": "444444",
-		"page_text": "000000",
-		"page_header_background": "263248",
-		"page_header_text": "ffffff"
-	}
-
-	for d in default_colours:
+	for d in default_properties:
 		if not doc.get(d):
-			doc.set(d, default_colours[d])
+			doc.set(d, default_properties[d])
 
 	if not doc.font_size:
 		doc.font_size = "14px"
