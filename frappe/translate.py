@@ -231,7 +231,7 @@ def get_messages_from_report(name):
 		frappe.db.get_value("DocType", report.ref_doctype, "module"))
 	if report.query:
 		messages.extend(re.findall('"([^:,^"]*):', report.query))
-		messages.append(report.report_name)
+	messages.append(report.report_name)
 	return clean(messages)
 
 def get_messages_from_page_or_report(doctype, name, module=None):
@@ -240,6 +240,7 @@ def get_messages_from_page_or_report(doctype, name, module=None):
 	file_path = frappe.get_module_path(module, doctype, name, name)
 	messages = get_messages_from_file(file_path + ".js")
 	messages += get_messages_from_file(file_path + ".html")
+	messages += get_messages_from_file(file_path + ".py")
 
 	return clean(messages)
 
@@ -380,8 +381,10 @@ def rebuild_all_translation_files():
 		for app in frappe.get_all_apps():
 			write_translations_file(app, lang)
 
-def write_translations_file(app, lang, full_dict=None):
-	app_messages = get_messages_for_app(app)
+def write_translations_file(app, lang, full_dict=None, app_messages=None):
+	if not app_messages:
+		app_messages = get_messages_for_app(app)
+
 	if not app_messages:
 		return
 
