@@ -491,7 +491,7 @@ frappe.ui.form.GridRow = Class.extend({
 		if(!this.form_area) {
 			$('<div class="panel-heading">\
 				<div class="toolbar">\
-					<span class="panel-title">Editing Row #<span class="row-index"></span></span>\
+					<span class="panel-title">' + __("Editing Row") + ' #<span class="row-index"></span></span>\
 					<span class="text-success pull-right grid-toggle-row" \
 						title="'+__("Close")+'"\
 						style="margin-left: 7px;">\
@@ -508,7 +508,7 @@ frappe.ui.form.GridRow = Class.extend({
 			<div class="panel-body">\
 				<div class="form-area"></div>\
 				<div class="toolbar footer-toolbar" style="margin-top: 15px">\
-					<span class="text-muted"><a href="#" class="shortcuts"><i class="icon-keyboard"></i> Shortcuts</a></span>\
+					<span class="text-muted"><a href="#" class="shortcuts"><i class="icon-keyboard"></i>' + __("Shortcuts") + '</a></span>\
 					<span class="text-success pull-right grid-toggle-row" \
 						title="'+__("Close")+'"\
 						style="margin-left: 7px; cursor: pointer;">\
@@ -562,16 +562,16 @@ frappe.ui.form.GridRow = Class.extend({
 		// in form
 		if(this.fields_dict && this.fields_dict[fieldname]) {
 			this.fields_dict[fieldname].refresh();
+			this.layout.refresh_dependency();
 		}
 	},
 	get_visible_columns: function(blacklist) {
+		var me = this;
 		var visible_columns = $.map(this.docfields, function(df) {
-			if(df.print_hide || df.hidden
-				|| in_list(blacklist, df.fieldname)
-				|| in_list(frappe.model.layout_fields, df.fieldtype))
-				return null;
-			else
-				return df;
+			var visible = !df.hidden && df.in_list_view && me.grid.frm.get_perm(df.permlevel, "read")
+				&& !in_list(frappe.model.layout_fields, df.fieldtype) && !in_list(blacklist, df.fieldname);
+
+			return visible ? df : null;
 		});
 		return visible_columns;
 	}

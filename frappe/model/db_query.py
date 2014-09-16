@@ -132,14 +132,32 @@ class DatabaseQuery(object):
 	def remove_user_tags(self):
 		"""remove column _user_tags if not in table"""
 		columns = frappe.db.get_table_columns(self.doctype)
+
+		# remove from fields
 		to_remove = []
 		for fld in self.fields:
-			for f in ("_user_tags", "_comments"):
+			for f in ("_user_tags", "_comments", "_assign"):
 				if f in fld and not f in columns:
 					to_remove.append(fld)
 
 		for fld in to_remove:
 			del self.fields[self.fields.index(fld)]
+
+		# remove from filters
+		to_remove = []
+		for each in self.filters:
+			if isinstance(each, basestring):
+				each = [each]
+
+			for element in each:
+				if element in ("_user_tags", "_comments", "_assign") and element not in columns:
+					to_remove.append(each)
+
+		for each in to_remove:
+			if isinstance(self.filters, dict):
+				del self.filters[each]
+			else:
+				self.filters.remove(each)
 
 	def build_conditions(self):
 		self.conditions = []
