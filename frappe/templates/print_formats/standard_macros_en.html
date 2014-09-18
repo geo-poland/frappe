@@ -138,6 +138,15 @@
 	{%- endif -%}
 {%- endmacro -%}
 
+{%- macro add_light_header(page_num, max_pages, doc, letter_head, no_letterhead) -%}
+	{% if letter_head and not no_letterhead %}
+	<div class="letter-head">{{ letter_head }}</div>
+	{% endif %}
+	{% if max_pages > 1 %}
+	<p class="text-right">{{ ("Page #{0} of {1}").format(page_num, max_pages) }}</p>
+	{% endif %}
+{%- endmacro -%}
+
 {%- macro render_imf_table(df, doc) -%}
 	{%- set table_meta = frappe.get_meta(df.options) -%}
 	{%- set data = doc.get(df.fieldname)[df.start:df.end] -%}
