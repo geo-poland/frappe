@@ -115,17 +115,17 @@
 	{% endif %}
 {%- endmacro -%}
 
-{%- macro add_condensed_header(page_num, max_pages, doc, letter_head, no_letterhead) -%}
+{%- macro add_geo_header(page_num, max_pages, doc, letter_head, no_letterhead) -%}
 	{% if letter_head and not no_letterhead %}
 	<div class="letter-head">{{ letter_head }}</div>
 	{% endif %}
 	{% if max_pages > 1 %}
-	<p class="text-right"><small>{{ ("Page {0} of {1}").format(page_num, max_pages) }}</small></p>
+	<p class="text-right">{{ ("Page #{0} of {1}").format(page_num, max_pages) }}</p>
 	{% endif %}
 	<div class="print-heading">
-		<h3 style="margin-bottom: 2px; margin-top: 10px;">{{ doc.select_print_heading or (doc.print_heading if doc.print_heading != None
+		<h3>{{ doc.select_print_heading or (doc.print_heading if doc.print_heading != None
 			else (doc.doctype)) }}</h3>
-		<h4 class="text-muted" style="margin-bottom: 2px;">{{ doc.sub_heading if doc.sub_heading != None
+		<h4 class="text-muted">{{ doc.sub_heading if doc.sub_heading != None
 				else "#{}".format(doc[doc.meta.title_field or "name"]) }}</h4>
 	</div>
 	{%- if doc.meta.is_submittable and doc.docstatus==0-%}
