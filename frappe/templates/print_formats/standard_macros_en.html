@@ -114,3 +114,74 @@
 	<p class="text-right">{{ ("Page #{0} of {1}").format(page_num, max_pages) }}</p>
 	{% endif %}
 {%- endmacro -%}
+
+{%- macro add_condensed_header(page_num, max_pages, doc, letter_head, no_letterhead) -%}
+	{% if letter_head and not no_letterhead %}
+	<div class="letter-head">{{ letter_head }}</div>
+	{% endif %}
+	{% if max_pages > 1 %}
+	<p class="text-right"><small>{{ ("Page {0} of {1}").format(page_num, max_pages) }}</small></p>
+	{% endif %}
+	<div class="print-heading">
+		<h3 style="margin-bottom: 2px; margin-top: 10px;">{{ doc.select_print_heading or (doc.print_heading if doc.print_heading != None
+			else (doc.doctype)) }}</h3>
+		<h4 class="text-muted" style="margin-bottom: 2px;">{{ doc.sub_heading if doc.sub_heading != None
+				else "#{}".format(doc[doc.meta.title_field or "name"]) }}</h4>
+	</div>
+	{%- if doc.meta.is_submittable and doc.docstatus==0-%}
+	<div class="alert alert-info text-center">
+		<h4 style="margin: 0px;">{{ ("DRAFT") }}</h4></div>
+	{%- endif -%}
+	{%- if doc.meta.is_submittable and doc.docstatus==2-%}
+	<div class="alert alert-danger text-center">
+		<h4 style="margin: 0px;">{{ ("CANCELLED") }}</h4></div>
+	{%- endif -%}
+{%- endmacro -%}
+
+{%- macro render_imf_table(df, doc) -%}
+	{%- set table_meta = frappe.get_meta(df.options) -%}
+	{%- set data = doc.get(df.fieldname)[df.start:df.end] -%}
+    {%- if data -%}
+    {%- set visible_columns = get_visible_columns(doc.get(df.fieldname),
+        table_meta) -%}
+    <div>
+        <table class="table table-bordered table-condensed">
+            <thead>
+                <tr>
+                    <th style="width: 3%">No.</th>
+                    <th style="width: 57%">Item</th>
+                    <th style="width: 10%;">Packaging</th>
+                    <th style="width: 10%;">Qty in carton</th>
+                    {% if not hide_rate -%}<th style="width: 10%;">Unit<br>price</th>{%- endif %}
+                    {% if not hide_amount -%}<th style="width: 10%;">Carton<br>price</th>{%- endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                <tr>
+                    <td>{{ row.idx }}</td>
+                    <td>
+                        {% if not row.meta.is_print_hide("item_code") -%}
+                            <div class="primary">{{ row.item_code }}</div>
+                        {%- endif %}
+                        {% if (not row.meta.is_print_hide("item_name") and
+                            (row.meta.is_print_hide("item_code") or row.item_code != row.item_name)) -%}
+                            <div class="primary">{{ row.get_formatted("item_name") }}</div>
+                        {%- endif %}
+                        {% if (not row.meta.is_print_hide("description") and row.description and
+                            ((row.meta.is_print_hide("item_code") and row.meta.is_print_hide("item_name"))
+                                or not (row.item_code == row.item_name == row.description))) -%}
+                            <p>{{ row.get_formatted("description") }}</p>
+                        {%- endif %}
+                    </td>
+                    <td style="text-align: right;"><small>{{ row.uom or row.stock_uom }}</small></td>
+                    <td style="text-align: right;">{{ row.get_formatted("qty", doc) }}</td>
+                    {% if not hide_rate -%}<td style="text-align: right;">{{ row.get_formatted("rate", doc) }}</td>{%- endif %}
+                    {% if not hide_amount -%}<td style="text-align: right;">{{ row.get_formatted("amount", doc) }}</td>{%- endif %}
+		        </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {%- endif -%}
+{%- endmacro -%}
