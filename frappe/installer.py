@@ -10,13 +10,14 @@ import os, json
 import frappe
 import frappe.database
 import getpass
+import importlib
 from frappe.model.db_schema import DbManager
 from frappe.model.sync import sync_for
 from frappe.utils.fixtures import sync_fixtures
 from frappe.website import render, statics
 
 def install_db(root_login="root", root_password=None, db_name=None, source_sql=None,
-	admin_password = 'admin', verbose=True, force=0, site_config=None, reinstall=False):
+	admin_password=None, verbose=True, force=0, site_config=None, reinstall=False):
 	frappe.flags.in_install_db = True
 	make_conf(db_name, site_config=site_config)
 	if reinstall:
@@ -29,30 +30,34 @@ def install_db(root_login="root", root_password=None, db_name=None, source_sql=N
 		frappe.local.session = frappe._dict({'user':'Administrator'})
 		create_database_and_user(force, verbose)
 
-	frappe.conf.admin_password = admin_password
+	frappe.conf.admin_password = frappe.conf.admin_password or admin_password
 
 	frappe.connect(db_name=db_name)
 	import_db_from_sql(source_sql, verbose)
+	remove_missing_apps()
 
 	create_auth_table()
 	frappe.flags.in_install_db = False
+
+def get_current_host():
+	return frappe.db.sql("select user()")[0][0].split('@')[1]
 
 def create_database_and_user(force, verbose):
 	db_name = frappe.local.conf.db_name
 	dbman = DbManager(frappe.local.db)
 	if force or (db_name not in dbman.get_database_list()):
-		dbman.delete_user(db_name)
+		dbman.delete_user(db_name, get_current_host())
 		dbman.drop_database(db_name)
 	else:
 		raise Exception("Database %s already exists" % (db_name,))
 
-	dbman.create_user(db_name, frappe.conf.db_password)
+	dbman.create_user(db_name, frappe.conf.db_password, get_current_host())
 	if verbose: print "Created user %s" % db_name
 
 	dbman.create_database(db_name)
 	if verbose: print "Created database %s" % db_name
 
-	dbman.grant_all_privileges(db_name, db_name)
+	dbman.grant_all_privileges(db_name, db_name, get_current_host())
 	dbman.flush_privileges()
 	if verbose: print "Granted privileges to user %s and database %s" % (db_name, db_name)
 
@@ -195,3 +200,14 @@ def add_module_defs(app):
 		d.app_name = app
 		d.module_name = module
 		d.save()
+
+def remove_missing_apps():
+	apps = ('frappe_subscription',)
+	installed_apps = frappe.get_installed_apps()
+	for app in apps:
+		if app in installed_apps:
+			try:
+				importlib.import_module(app)
+			except ImportError:
+				installed_apps.remove(app)
+				frappe.db.set_global("installed_apps", json.dumps(installed_apps))

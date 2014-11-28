@@ -165,9 +165,12 @@ def formatdate(string_date=None, format_string=None):
 
 		out = frappe.local.user_format or "yyyy-mm-dd"
 
-		return out.replace("dd", date.strftime("%d"))\
-			.replace("mm", date.strftime("%m"))\
-			.replace("yyyy", date.strftime("%Y"))
+		try:
+			return out.replace("dd", date.strftime("%d"))\
+				.replace("mm", date.strftime("%m"))\
+				.replace("yyyy", date.strftime("%Y"))
+		except ValueError, e:
+			raise frappe.ValidationError, str(e)
 
 def global_date_format(date):
 	"""returns date as 1 January 2012"""
@@ -324,6 +327,9 @@ def money_in_words(number, main_currency = None, fraction_currency=None):
 	Returns string in words with currency and fraction currency.
 	"""
 	from frappe.utils import get_defaults
+
+	if not number or flt(number) < 0:
+		return ""
 
 	d = get_defaults()
 	if not main_currency:
@@ -580,7 +586,7 @@ def expand_relative_urls(html):
 def quote_urls(html):
 	def _quote_url(match):
 		groups = list(match.groups())
-		groups[2] = urllib.quote(groups[2], safe="~@#$&()*!+=:;,.?/'")
+		groups[2] = urllib.quote(groups[2].encode("utf-8"), safe=b"~@#$&()*!+=:;,.?/'").decode("utf-8")
 		return "".join(groups)
 	return re.sub('(href|src){1}([\s]*=[\s]*[\'"]?)((?:http)[^\'">]+)([\'"]?)',
 		_quote_url, html)

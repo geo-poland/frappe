@@ -11,7 +11,9 @@ Syncs a database table to the `DocType` (metadata)
 import os
 import frappe
 from frappe import _
-from frappe.utils import cstr
+from frappe.utils import cstr, cint
+
+class InvalidColumnName(frappe.ValidationError): pass
 
 type_map = {
 	'Currency':		('decimal', '18,6')
@@ -94,20 +96,23 @@ class DbTable:
 			get columns from docfields and custom fields
 		"""
 		fl = frappe.db.sql("SELECT * FROM tabDocField WHERE parent = %s", self.doctype, as_dict = 1)
+		precisions = {}
 
-		try:
+		if not frappe.flags.in_install_app:
 			custom_fl = frappe.db.sql("""\
 				SELECT * FROM `tabCustom Field`
 				WHERE dt = %s AND docstatus < 2""", (self.doctype,), as_dict=1)
 			if custom_fl: fl += custom_fl
-		except Exception, e:
-			if e.args[0]!=1146: # ignore no custom field
-				raise
+
+			# get precision from property setters
+			for ps in frappe.get_all("Property Setter", fields=["field_name", "value"],
+				filters={"doc_type": self.doctype, "doctype_or_field": "DocField", "property": "precision"}):
+					precisions[ps.field_name] = ps.value
 
 		for f in fl:
 			self.columns[f['fieldname']] = DbColumn(self, f['fieldname'],
-					f['fieldtype'], f.get('length'), f.get('default'),
-					f.get('search_index'), f.get('options'))
+				f['fieldtype'], f.get('length'), f.get('default'), f.get('search_index'),
+				f.get('options'), precisions.get(f['fieldname']) or f.get('precision'))
 
 	def get_columns_from_db(self):
 		self.show_columns = frappe.db.sql("desc `%s`" % self.name)
@@ -212,7 +217,7 @@ class DbTable:
 			frappe.db.sql("alter table `{}` {}".format(self.name, ", ".join(query)))
 
 class DbColumn:
-	def __init__(self, table, fieldname, fieldtype, length, default, set_index, options):
+	def __init__(self, table, fieldname, fieldtype, length, default, set_index, options, precision):
 		self.table = table
 		self.fieldname = fieldname
 		self.fieldtype = fieldtype
@@ -220,9 +225,10 @@ class DbColumn:
 		self.set_index = set_index
 		self.default = default
 		self.options = options
+		self.precision = precision
 
 	def get_definition(self, with_default=1):
-		ret = get_definition(self.fieldtype)
+		ret = get_definition(self.fieldtype, self.precision)
 
 		if with_default and self.default and (self.default not in default_shortcuts) \
 			and not self.default.startswith(":") and ret not in ['text', 'longtext']:
@@ -307,20 +313,20 @@ class DbManager:
 
 		return [t[0] for t in self.db.sql("SHOW TABLES")]
 
-	def create_user(self,user,password):
+	def create_user(self, user, password, host):
 		#Create user if it doesn't exist.
 		try:
 			if password:
-				self.db.sql("CREATE USER '%s'@'localhost' IDENTIFIED BY '%s';" % (user[:16], password))
+				self.db.sql("CREATE USER '%s'@'%s' IDENTIFIED BY '%s';" % (user[:16], host, password))
 			else:
-				self.db.sql("CREATE USER '%s'@'localhost';"%user[:16])
+				self.db.sql("CREATE USER '%s'@'%s';" % (user[:16], host))
 		except Exception:
 			raise
 
-	def delete_user(self,target):
+	def delete_user(self, target, host):
 	# delete user if exists
 		try:
-			self.db.sql("DROP USER '%s'@'localhost';" % target)
+			self.db.sql("DROP USER '%s'@'%s';" % (target, host))
 		except Exception, e:
 			if e.args[0]==1396:
 				pass
@@ -336,14 +342,14 @@ class DbManager:
 	def drop_database(self,target):
 		self.db.sql("DROP DATABASE IF EXISTS `%s`;"%target)
 
-	def grant_all_privileges(self,target,user):
-		self.db.sql("GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'localhost';" % (target, user))
+	def grant_all_privileges(self, target, user, host):
+		self.db.sql("GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%s';" % (target, user, host))
 
-	def grant_select_privilges(self,db,table,user):
+	def grant_select_privilges(self, db, table, user, host):
 		if table:
-			self.db.sql("GRANT SELECT ON %s.%s to '%s'@'localhost';" % (db,table,user))
+			self.db.sql("GRANT SELECT ON %s.%s to '%s'@'%s';" % (db, table, user, host))
 		else:
-			self.db.sql("GRANT SELECT ON %s.* to '%s'@'localhost';" % (db,user))
+			self.db.sql("GRANT SELECT ON %s.* to '%s'@'%s';" % (db, user, host))
 
 	def flush_privileges(self):
 		self.db.sql("FLUSH PRIVILEGES")
@@ -355,8 +361,8 @@ class DbManager:
 	def restore_database(self,target,source,user,password):
 		from frappe.utils import make_esc
 		esc = make_esc('$ ')
-		os.system("mysql -u %s -p%s %s < %s" % \
-			(esc(user), esc(password), esc(target), source))
+		os.system("mysql -u %s -p%s -h%s %s < %s" % \
+			(esc(user), esc(password), esc(frappe.db.host), esc(target), source))
 
 	def drop_table(self,table_name):
 		"""drop table if exists"""
@@ -369,7 +375,7 @@ def validate_column_name(n):
 	n = n.replace(' ','_').strip().lower()
 	import re
 	if re.search("[\W]", n):
-		frappe.throw(_("Fieldname {0} cannot contain letters, numbers or spaces").format(n))
+		frappe.throw(_("Fieldname {0} cannot contain letters, numbers or spaces").format(n), InvalidColumnName)
 	return n
 
 
@@ -406,7 +412,7 @@ def remove_all_foreign_keys():
 		for f in fklist:
 			frappe.db.sql("alter table `tab%s` drop foreign key `%s`" % (t[0], f[1]))
 
-def get_definition(fieldtype):
+def get_definition(fieldtype, precision=None):
 	d = type_map.get(fieldtype)
 
 	if not d:
@@ -414,12 +420,16 @@ def get_definition(fieldtype):
 
 	ret = d[0]
 	if d[1]:
-		ret += '(' + d[1] + ')'
+		length = d[1]
+		if fieldtype in ["Float", "Currency", "Percent"] and cint(precision) > 6:
+			length = '18,9'
+		ret += '(' + length + ')'
+
 	return ret
 
 
-def add_column(doctype, column_name, fieldtype):
+def add_column(doctype, column_name, fieldtype, precision=None):
 	frappe.db.commit()
 	frappe.db.sql("alter table `tab%s` add column %s %s" % (doctype,
-		column_name, get_definition(fieldtype)))
+		column_name, get_definition(fieldtype, precision)))
 

@@ -85,6 +85,9 @@ frappe.views.ListView = Class.extend({
 		// additional fields
 		if(this.settings.add_fields) {
 			$.each(this.settings.add_fields, function(i, d) {
+				if(d.indexOf("`tab")===-1) {
+					d = "`tab" + me.doctype + "`." + d;
+				}
 				if(me.fields.indexOf(d)==-1)
 					me.fields.push(d);
 			});
@@ -510,32 +513,4 @@ frappe.views.ListView = Class.extend({
 		var icon_html = "<i class='%(icon_class)s' title='%(label)s'></i>";
 		$(parent).append(repl(icon_html, {icon_class: icon_class, label: __(label) || ''}));
 	}
-});
-
-// embeddable
-frappe.provide('frappe.views.RecordListView');
-frappe.views.RecordListView = frappe.views.DocListView.extend({
-	init: function(doctype, wrapper, ListView) {
-		this.doctype = doctype;
-		this.wrapper = wrapper;
-		this.listview = new ListView(this, doctype);
-		this.listview.parent = this;
-		this.setup();
-	},
-
-	setup: function() {
-		var me = this;
-		me.page_length = 10;
-		$(me.wrapper).empty();
-		me.init_list();
-	},
-
-	get_args: function() {
-		var args = this._super();
-		$.each((this.default_filters || []), function(i, f) {
-		      args.filters.push(f);
-		});
-		args.docstatus = args.docstatus.concat((this.default_docstatus || []));
-		return args;
-	},
 });

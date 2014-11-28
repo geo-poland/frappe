@@ -136,7 +136,7 @@ Bulk Email,الجزء الأكبر البريد الإلكتروني
 Bulk email limit {0} crossed,الحد معظم البريد الإلكتروني {0} عبروا
 Button,زر
 By,بواسطة
-Calculate,حساب
+Calculate,إحسب
 Calendar,تقويم
 Cancel,إلغاء
 Cancelled,إلغاء
@@ -193,7 +193,7 @@ Comment By Fullname,التعليق بواسطة الاسم بالكامل
 Comment Date,التعليق تاريخ
 Comment Docname,التعليق Docname
 Comment Doctype,التعليق DOCTYPE
-Comment Time,التعليق الوقت
+Comment Time,وقت التعليق 
 Comments,تعليقات
 Communication,اتصالات
 Communication Medium,الاتصالات متوسطة
@@ -744,15 +744,15 @@ Page,صفحة
 Page #{0} of {1},الصفحة # {0} من {1}
 Page Background,خلفية الصفحة
 Page HTML,صفحة HTML
-Page Header,رأس الصفحة
-Page Header Background,رأس الصفحة الخلفية
+Page Header,ترويسة الصفحة
+Page Header Background,خلفية ترويسة الصفحة
 Page Header Text,رأس الصفحة نص
-Page Links,الصفحة روابط
-Page Name,الصفحة اسم
+Page Links,روابط الصفحة
+Page Name,اسم الصفحة
 Page Role,الصفحة الدور
 Page Text,نص الصفحة
 Page Title,صفحة العنوان
-Page content,صفحة المحتوى
+Page content,محتوى الصفحة
 Page not found,لم يتم العثور على الصفحة
 Page or Generator,الصفحة أو مولد
 Page url name (auto-generated),اسم الصفحة رابط ( تم إنشاؤه تلقائيا )
@@ -948,7 +948,7 @@ Select Type,حدد نوع
 Select User or DocType to start.,حدد العضو أو DOCTYPE للبدء.
 Select a Banner Image first.,تحديد صورة بانر الأول.
 Select an image of approx width 150px with a transparent background for best results.,اختر صورة من تقريبا عرض 150px مع خلفية شفافة للحصول على أفضل النتائج.
-Select dates to create a new ,
+Select dates to create a new ,Select dates to create a new 
 "Select modules to be shown (based on permission). If hidden, they will be hidden for all users.",حدد وحدات ليتم عرضها (على أساس إذن ) . إذا مخفي ، وسوف تكون مخفية لجميع المستخدمين.
 Select or drag across time slots to create a new event.,حدد أو اسحب عبر فتحات الوقت لإنشاء حدث جديد.
 "Select target = ""_blank"" to open in a new page.","حدد الهدف = "" _blank "" لفتح صفحة جديدة في ."
@@ -1070,7 +1070,7 @@ Table,جدول
 Table {0} cannot be empty,الجدول {0} لا يمكن أن تكون فارغة
 Tag,بطاقة
 Tag Name,علامة الاسم
-Tags,به
+Tags,علامات
 Tahoma,تاهوما
 Target,الهدف
 Tasks,المهام
@@ -1169,7 +1169,7 @@ User Permissions Manager,مدير ضوابط المستخدم
 User Roles,أدوار المستخدم
 User Tags,الكلمات المستخدم
 User Type,نوع المستخدم
-"User Type ""System User"" can access Desktop. ""Website User"" can only be logged into the website and portal pages. ",
+"User Type ""System User"" can access Desktop. ""Website User"" can only be logged into the website and portal pages. ","User Type ""System User"" can access Desktop. ""Website User"" can only be logged into the website and portal pages. "
 User Vote,تصويت المستخدم
 User not allowed to delete {0}: {1},المستخدم لا يسمح لحذف {0}: {1}
 User permissions should not apply for this Link,لا ينبغي تطبيق أذونات المستخدم لهذا الرابط
@@ -1181,7 +1181,7 @@ UserRole,UserRole
 Users and Permissions,المستخدمين وأذونات
 Users with role {0}:,المستخدمين مع دور {0} :
 Valid Login id required.,صالحة معرف تسجيل الدخول المطلوبة.
-Valid email and name required,بريد إلكتروني صالح واسم المطلوب
+Valid email and name required, مطلوب بريد إلكتروني صالح واسم صالح 
 Value,قيمة
 Value Change,قيمة التغيير
 Value Changed,قيمة تغيير
@@ -1305,7 +1305,7 @@ film,فيلم
 filter,تصفية
 fire,حريق
 flag,علم
-folder-close,المجلد مسافة قريبة
+folder-close,غلق مجلد
 folder-open,فتح مجلد
 font,الخط
 forward,إلى الأمام
@@ -1413,7 +1413,7 @@ volume-up,حجم المتابعة
 warning-sign,علامة إنذار
 wrench,وجع
 yyyy-mm-dd,YYYY-MM-DD
-zoom-in,التكبير في
+zoom-in,تكبير
 zoom-out,تكبير المغادرة
 {0} List,{0} قائمة
 {0} added,{0} أضاف
